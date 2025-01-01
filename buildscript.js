@@ -9,8 +9,8 @@ import sveltePreprocess from "svelte-preprocess"
 // Arquivos de entrada e saída
 const FILES = {
     Output: {
-        dir: './exported',
-        html: './exported/index.html'
+        dir: './docs',
+        html: './docs/index.html'
     },
     Source: {
         script: './src/index.ts',
