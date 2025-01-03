@@ -1,5 +1,5 @@
 export enum Rarity {
-    SR, SSR, UR
+    N, R, SR, SSR, UR
 }
 
 export function getRarityColor(rarity: Rarity): RarityColor {

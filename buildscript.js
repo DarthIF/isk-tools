@@ -156,18 +156,27 @@ function build_html() {
 
 
 async function main() {
+    console.log('> Iniciando build...')
+
     // Verificar se o diretório existe
     if (!fs.existsSync(FILES.Output.dir)) {
-        console.log('Criando diretório de saída...')
+        console.log('> Criando diretório de saída...')
+
         fs.mkdirSync(FILES.Output.dir)
+
+        console.log('> Diretório de saida criado!')
     }
 
 
+    console.log('> Construindo Svelte...')
     build_svelte()
+
+    console.log('> Construindo HTML...')
     build_html()
 
+    console.log('> Copiando arquivos estaticos...')
     await copyIfDifferent(FILES.Source.staic, FILES.Output.static)
 
-    console.log('Build finalizado!')
+    console.log('> Build finalizado!')
 }
 main()

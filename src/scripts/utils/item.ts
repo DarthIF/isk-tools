@@ -1,4 +1,4 @@
-import { Rarity, getRarityColor } from './rarity'
+import { Rarity, RarityColor, getRarityColor } from './rarity'
 
 export class Item {
     private name: string
@@ -26,8 +26,13 @@ export class Item {
 
 
 
-    public getRarityColor() {
+    public getRarityColor(): RarityColor {
         return getRarityColor(this.rarity)
     }
+
+    public isShiny(): boolean {
+        return this.rarity === Rarity.SSR || this.rarity === Rarity.UR
+    }
+
 
 }

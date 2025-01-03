@@ -6,22 +6,22 @@
         if (!el_slot) return;
 
         if (item === null) {
-            el_slot.classList.remove("slot-shine");
+            el_slot.classList.remove("slot-shiny");
 
             el_slot.style.setProperty("--color-light", "#ffffff");
             el_slot.style.setProperty("--color-dark", "#808080");
-        } else {
-            el_slot.classList.add("slot-shine");
 
-            el_slot.style.setProperty(
-                "--color-light",
-                item.getRarityColor().light,
-            );
-            el_slot.style.setProperty(
-                "--color-dark",
-                item.getRarityColor().dark,
-            );
+            return;
         }
+
+        if (item.isShiny()) {
+            el_slot.classList.add("slot-shiny");
+        } else {
+            el_slot.classList.remove("slot-shiny");
+        }
+
+        el_slot.style.setProperty("--color-light", item.getRarityColor().light);
+        el_slot.style.setProperty("--color-dark", item.getRarityColor().dark);
     }
 
     function getImage(item: Item | null): string {
@@ -38,7 +38,7 @@
     let el_slot: HTMLDivElement;
 </script>
 
-<div bind:this={el_slot} class="slot slot-shine">
+<div bind:this={el_slot} class="slot slot-shiny">
     <div class="inner-border" />
     <img src={getImage(item)} alt="Item" />
 </div>
@@ -71,7 +71,7 @@
             rgba(0, 0, 0, 1) 100%
         );
     }
-    .slot-shine {
+    .slot-shiny {
         position: relative;
     }
 
@@ -95,8 +95,8 @@
         inherits: false;
     }
 
-    .slot-shine::after,
-    .slot-shine::before {
+    .slot-shiny::after,
+    .slot-shiny::before {
         content: "";
         position: absolute;
 
@@ -125,7 +125,7 @@
         animation: 3s spin linear infinite;
     }
 
-    .slot-shine::before {
+    .slot-shiny::before {
         filter: blur(1.5rem);
         opacity: 0.5;
     }

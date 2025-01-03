@@ -702,13 +702,13 @@ if (typeof window !== "undefined")
 // src/scripts/utils/rarity.ts
 function getRarityColor(rarity) {
   switch (rarity) {
-    case 0 /* SR */:
+    case 2 /* SR */:
       return new RarityColor("rgba(171, 71, 188, 1)", "rgba(74, 20, 140, 1)");
     // Purple 400, Purple 900
-    case 1 /* SSR */:
+    case 3 /* SSR */:
       return new RarityColor("rgba(255, 238, 88, 1)", "rgba(249, 168, 37, 1)");
     // Yellow 400, Yellow 800
-    case 2 /* UR */:
+    case 4 /* UR */:
       return new RarityColor("rgba(255, 167, 38, 1)", "rgba(230, 81, 0, 1)");
     // Orange 400, Orange 900
     default:
@@ -746,6 +746,9 @@ var Item = class {
   getRarityColor() {
     return getRarityColor(this.rarity);
   }
+  isShiny() {
+    return this.rarity === 3 /* SSR */ || this.rarity === 4 /* UR */;
+  }
 };
 
 // src/scripts/utils/crystal.ts
@@ -758,15 +761,15 @@ var image_red = "static/images/vermelho-removebg-preview.png";
 var image_blue = "static/images/azul-removebg-preview.png";
 var image_yellow = "static/images/amarelo-removebg-preview.png";
 var Crystals = {
-  CRYSTAL_ORE_RED: new Item("crystal_ore.red", 0 /* SR */, image_red, color_red),
-  CRYSTAL_ORE_BLUE: new Item("crystal_ore.blue", 0 /* SR */, image_blue, color_blue),
-  CRYSTAL_ORE_YELLOW: new Item("crystal_ore.yellow", 0 /* SR */, image_yellow, color_yellow),
-  CRYSTAL_RED: new Item("crystal.red", 1 /* SSR */, image_red, color_red),
-  CRYSTAL_BLUE: new Item("crystal.blue", 1 /* SSR */, image_blue, color_blue),
-  CRYSTAL_YELLOW: new Item("crystal.yellow", 1 /* SSR */, image_yellow, color_yellow),
-  REFINED_CRYSTAL_RED: new Item("refined_crystal.red", 2 /* UR */, image_red, color_red),
-  REFINED_CRYSTAL_BLUE: new Item("refined_crystal.blue", 2 /* UR */, image_blue, color_blue),
-  REFINED_CRYSTAL_YELLOW: new Item("refined_crystal.yellow", 2 /* UR */, image_yellow, color_yellow)
+  CRYSTAL_ORE_RED: new Item("crystal_ore.red", 2 /* SR */, image_red, color_red),
+  CRYSTAL_ORE_BLUE: new Item("crystal_ore.blue", 2 /* SR */, image_blue, color_blue),
+  CRYSTAL_ORE_YELLOW: new Item("crystal_ore.yellow", 2 /* SR */, image_yellow, color_yellow),
+  CRYSTAL_RED: new Item("crystal.red", 3 /* SSR */, image_red, color_red),
+  CRYSTAL_BLUE: new Item("crystal.blue", 3 /* SSR */, image_blue, color_blue),
+  CRYSTAL_YELLOW: new Item("crystal.yellow", 3 /* SSR */, image_yellow, color_yellow),
+  REFINED_CRYSTAL_RED: new Item("refined_crystal.red", 4 /* UR */, image_red, color_red),
+  REFINED_CRYSTAL_BLUE: new Item("refined_crystal.blue", 4 /* UR */, image_blue, color_blue),
+  REFINED_CRYSTAL_YELLOW: new Item("refined_crystal.yellow", 4 /* UR */, image_yellow, color_yellow)
 };
 
 // src/scripts/utils/lang.ts
@@ -834,14 +837,14 @@ function create_fragment(ctx) {
       div0 = element("div");
       t = space();
       img = element("img");
-      attr(div0, "class", "inner-border svelte-5t5lvb");
+      attr(div0, "class", "inner-border svelte-152jdw7");
       if (!src_url_equal(img.src, img_src_value = getImage(
         /*item*/
         ctx[0]
       ))) attr(img, "src", img_src_value);
       attr(img, "alt", "Item");
-      attr(img, "class", "svelte-5t5lvb");
-      attr(div1, "class", "slot slot-shine svelte-5t5lvb");
+      attr(img, "class", "svelte-152jdw7");
+      attr(div1, "class", "slot slot-shiny svelte-152jdw7");
     },
     m(target, anchor) {
       insert(target, div1, anchor);
@@ -876,14 +879,18 @@ function instance($$self, $$props, $$invalidate) {
   function update2() {
     if (!el_slot) return;
     if (item === null) {
-      el_slot.classList.remove("slot-shine");
+      el_slot.classList.remove("slot-shiny");
       el_slot.style.setProperty("--color-light", "#ffffff");
       el_slot.style.setProperty("--color-dark", "#808080");
-    } else {
-      el_slot.classList.add("slot-shine");
-      el_slot.style.setProperty("--color-light", item.getRarityColor().light);
-      el_slot.style.setProperty("--color-dark", item.getRarityColor().dark);
+      return;
     }
+    if (item.isShiny()) {
+      el_slot.classList.add("slot-shiny");
+    } else {
+      el_slot.classList.remove("slot-shiny");
+    }
+    el_slot.style.setProperty("--color-light", item.getRarityColor().light);
+    el_slot.style.setProperty("--color-dark", item.getRarityColor().dark);
   }
   onMount(() => {
     update2();
@@ -1037,8 +1044,8 @@ function create_fragment3(ctx) {
   return {
     c() {
       footer = element("footer");
-      footer.innerHTML = `<p class="svelte-xsxslj">Develop by <a href="https://github.com/DarthIF" class="svelte-xsxslj">Darth IF</a></p>`;
-      attr(footer, "class", "svelte-xsxslj");
+      footer.innerHTML = `<div class="content svelte-1gjhzhf"><div><h2 class="svelte-1gjhzhf">ISK Calculator</h2> <p class="svelte-1gjhzhf">Crystal calculator for the game Isekai:Slow Life</p></div> <div><a href="https://github.com/DarthIF/isk-calculator" class="svelte-1gjhzhf"><img src="static/images/github-mark/github-mark-white.svg" alt="GitHub" class="svelte-1gjhzhf"/></a></div></div> <p class="content-bottom svelte-1gjhzhf">Develop by <a href="https://github.com/DarthIF" class="svelte-1gjhzhf">Darth IF</a></p>`;
+      attr(footer, "class", "dark svelte-1gjhzhf");
     },
     m(target, anchor) {
       insert(target, footer, anchor);
@@ -1324,23 +1331,23 @@ function create_default_slot(ctx) {
       t17 = text(t17_value);
       attr(input0, "type", "checkbox");
       attr(input0, "id", "trading_post");
-      attr(div0, "class", "store-chip svelte-a3r742");
+      attr(div0, "class", "store-chip svelte-1dbzuzw");
       attr(input1, "type", "checkbox");
       attr(input1, "id", "challenge_shop");
-      attr(div1, "class", "store-chip svelte-a3r742");
+      attr(div1, "class", "store-chip svelte-1dbzuzw");
       attr(input2, "type", "checkbox");
       attr(input2, "id", "golemore_mine");
-      attr(div2, "class", "store-chip svelte-a3r742");
+      attr(div2, "class", "store-chip svelte-1dbzuzw");
       attr(input3, "type", "checkbox");
       attr(input3, "id", "guild");
-      attr(div3, "class", "store-chip svelte-a3r742");
+      attr(div3, "class", "store-chip svelte-1dbzuzw");
       attr(input4, "type", "checkbox");
       attr(input4, "id", "banquet");
-      attr(div4, "class", "store-chip svelte-a3r742");
-      attr(div5, "class", "stores-group svelte-a3r742");
-      attr(p0, "class", "svelte-a3r742");
-      attr(p1, "class", "svelte-a3r742");
-      attr(div6, "class", "card-stores-container svelte-a3r742");
+      attr(div4, "class", "store-chip svelte-1dbzuzw");
+      attr(div5, "class", "stores-group svelte-1dbzuzw");
+      attr(p0, "class", "svelte-1dbzuzw");
+      attr(p1, "class", "svelte-1dbzuzw");
+      attr(div6, "class", "card-stores-container svelte-1dbzuzw");
     },
     m(target, anchor) {
       insert(target, div6, anchor);
@@ -1713,12 +1720,12 @@ function create_fragment5(ctx) {
       t15 = space();
       create_component(footer.$$.fragment);
       set_style(h10, "margin", "auto");
-      attr(h10, "class", "svelte-a3r742");
-      attr(div0, "class", "crystal-group svelte-a3r742");
-      attr(h2, "class", "svelte-a3r742");
-      attr(h11, "class", "svelte-a3r742");
-      attr(div1, "class", "days-group svelte-a3r742");
-      attr(main, "class", "svelte-a3r742");
+      attr(h10, "class", "svelte-1dbzuzw");
+      attr(div0, "class", "crystal-group svelte-1dbzuzw");
+      attr(h2, "class", "svelte-1dbzuzw");
+      attr(h11, "class", "svelte-1dbzuzw");
+      attr(div1, "class", "days-group svelte-1dbzuzw");
+      attr(main, "class", "svelte-1dbzuzw");
     },
     m(target, anchor) {
       insert(target, main, anchor);

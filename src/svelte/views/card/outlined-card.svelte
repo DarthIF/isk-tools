@@ -7,6 +7,7 @@
     let element: HTMLDivElement;
 </script>
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div bind:this={element} class="outlined-card" {style} on:click on:keypress>
     <slot />
 </div>

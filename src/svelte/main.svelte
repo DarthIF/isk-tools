@@ -335,6 +335,8 @@
         width: auto;
         height: auto;
         min-height: 100vh;
+        max-width: 960px;
+        margin: auto;
 
         display: flex;
         flex-direction: column;
@@ -380,7 +382,6 @@
 
     .stores-group {
         width: auto;
-        min-width: 80%;
         margin-bottom: 16px;
 
         display: flex;
