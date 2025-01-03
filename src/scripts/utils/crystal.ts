@@ -9,9 +9,9 @@ const color_red = 'rgb(233, 30, 99)'
 const color_blue = 'rgb(3, 169, 244)'
 const color_yellow = 'rgb(255, 235, 59)'
 
-const image_red = '/static/images/vermelho-removebg-preview.png'
-const image_blue = '/static/images/azul-removebg-preview.png'
-const image_yellow = '/static/images/amarelo-removebg-preview.png'
+const image_red = 'static/images/vermelho-removebg-preview.png'
+const image_blue = 'static/images/azul-removebg-preview.png'
+const image_yellow = 'static/images/amarelo-removebg-preview.png'
 
 
 export const Crystals = {

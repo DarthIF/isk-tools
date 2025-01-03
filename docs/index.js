@@ -754,9 +754,9 @@ var CRYSTAL_TO_ORE = 20;
 var color_red = "rgb(233, 30, 99)";
 var color_blue = "rgb(3, 169, 244)";
 var color_yellow = "rgb(255, 235, 59)";
-var image_red = "/static/images/vermelho-removebg-preview.png";
-var image_blue = "/static/images/azul-removebg-preview.png";
-var image_yellow = "/static/images/amarelo-removebg-preview.png";
+var image_red = "static/images/vermelho-removebg-preview.png";
+var image_blue = "static/images/azul-removebg-preview.png";
+var image_yellow = "static/images/amarelo-removebg-preview.png";
 var Crystals = {
   CRYSTAL_ORE_RED: new Item("crystal_ore.red", 0 /* SR */, image_red, color_red),
   CRYSTAL_ORE_BLUE: new Item("crystal_ore.blue", 0 /* SR */, image_blue, color_blue),
