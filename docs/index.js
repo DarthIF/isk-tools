@@ -1,6 +1,13 @@
 // node_modules/svelte/src/runtime/internal/utils.js
 function noop() {
 }
+function assign(tar, src) {
+  for (const k in src) tar[k] = src[k];
+  return (
+    /** @type {T & S} */
+    tar
+  );
+}
 function run(fn) {
   return fn();
 }
@@ -16,8 +23,61 @@ function is_function(thing) {
 function safe_not_equal(a, b) {
   return a != a ? b == b : a !== b || a && typeof a === "object" || typeof a === "function";
 }
+var src_url_equal_anchor;
+function src_url_equal(element_src, url) {
+  if (element_src === url) return true;
+  if (!src_url_equal_anchor) {
+    src_url_equal_anchor = document.createElement("a");
+  }
+  src_url_equal_anchor.href = url;
+  return element_src === src_url_equal_anchor.href;
+}
 function is_empty(obj) {
   return Object.keys(obj).length === 0;
+}
+function create_slot(definition, ctx, $$scope, fn) {
+  if (definition) {
+    const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
+    return definition[0](slot_ctx);
+  }
+}
+function get_slot_context(definition, ctx, $$scope, fn) {
+  return definition[1] && fn ? assign($$scope.ctx.slice(), definition[1](fn(ctx))) : $$scope.ctx;
+}
+function get_slot_changes(definition, $$scope, dirty, fn) {
+  if (definition[2] && fn) {
+    const lets = definition[2](fn(dirty));
+    if ($$scope.dirty === void 0) {
+      return lets;
+    }
+    if (typeof lets === "object") {
+      const merged = [];
+      const len = Math.max($$scope.dirty.length, lets.length);
+      for (let i = 0; i < len; i += 1) {
+        merged[i] = $$scope.dirty[i] | lets[i];
+      }
+      return merged;
+    }
+    return $$scope.dirty | lets;
+  }
+  return $$scope.dirty;
+}
+function update_slot_base(slot, slot_definition, ctx, $$scope, slot_changes, get_slot_context_fn) {
+  if (slot_changes) {
+    const slot_context = get_slot_context(slot_definition, ctx, $$scope, get_slot_context_fn);
+    slot.p(slot_context, slot_changes);
+  }
+}
+function get_all_dirty_from_scope($$scope) {
+  if ($$scope.ctx.length > 32) {
+    const dirty = [];
+    const length = $$scope.ctx.length / 32;
+    for (let i = 0; i < length; i++) {
+      dirty[i] = -1;
+    }
+    return dirty;
+  }
+  return -1;
 }
 
 // node_modules/svelte/src/runtime/internal/globals.js
@@ -152,6 +212,12 @@ function get_current_component() {
 }
 function onMount(fn) {
   get_current_component().$$.on_mount.push(fn);
+}
+function bubble(component, event) {
+  const callbacks = component.$$.callbacks[event.type];
+  if (callbacks) {
+    callbacks.slice().forEach((fn) => fn.call(this, event));
+  }
 }
 
 // node_modules/svelte/src/runtime/internal/scheduler.js
@@ -323,7 +389,7 @@ function make_dirty(component, i) {
   }
   component.$$.dirty[i / 31 | 0] |= 1 << i % 31;
 }
-function init(component, options, instance3, create_fragment3, not_equal, props, append_styles = null, dirty = [-1]) {
+function init(component, options, instance6, create_fragment6, not_equal, props, append_styles = null, dirty = [-1]) {
   const parent_component = current_component;
   set_current_component(component);
   const $$ = component.$$ = {
@@ -349,7 +415,7 @@ function init(component, options, instance3, create_fragment3, not_equal, props,
   };
   append_styles && append_styles($$.root);
   let ready = false;
-  $$.ctx = instance3 ? instance3(component, options.props || {}, (i, ret, ...rest) => {
+  $$.ctx = instance6 ? instance6(component, options.props || {}, (i, ret, ...rest) => {
     const value = rest.length ? rest[0] : ret;
     if ($$.ctx && not_equal($$.ctx[i], $$.ctx[i] = value)) {
       if (!$$.skip_bound && $$.bound[i]) $$.bound[i](value);
@@ -360,7 +426,7 @@ function init(component, options, instance3, create_fragment3, not_equal, props,
   $$.update();
   ready = true;
   run_all($$.before_update);
-  $$.fragment = create_fragment3 ? create_fragment3($$.ctx) : false;
+  $$.fragment = create_fragment6 ? create_fragment6($$.ctx) : false;
   if (options.target) {
     if (options.hydrate) {
       start_hydrating();
@@ -428,7 +494,7 @@ if (typeof HTMLElement === "function") {
     async connectedCallback() {
       this.$$cn = true;
       if (!this.$$c) {
-        let create_slot = function(name) {
+        let create_slot2 = function(name) {
           return () => {
             let node;
             const obj = {
@@ -462,7 +528,7 @@ if (typeof HTMLElement === "function") {
         const existing_slots = get_custom_elements_slots(this);
         for (const name of this.$$s) {
           if (name in existing_slots) {
-            $$slots[name] = [create_slot(name)];
+            $$slots[name] = [create_slot2(name)];
           }
         }
         for (const attribute of this.attributes) {
@@ -658,43 +724,50 @@ var RarityColor = class {
   }
 };
 
+// src/scripts/utils/item.ts
+var Item = class {
+  name;
+  rarity;
+  image;
+  constructor(name, rarity, image, color) {
+    this.name = name;
+    this.rarity = rarity;
+    this.image = image;
+  }
+  getName() {
+    return this.name;
+  }
+  getRarity() {
+    return this.rarity;
+  }
+  getImage() {
+    return this.image;
+  }
+  getRarityColor() {
+    return getRarityColor(this.rarity);
+  }
+};
+
 // src/scripts/utils/crystal.ts
 var REFINED_TO_ORE = 20 * 50;
 var CRYSTAL_TO_ORE = 20;
-function getCrystalRarity(crystal) {
-  switch (crystal) {
-    case "crystal_ore.red" /* CRYSTAL_ORE_RED */:
-    case "crystal_ore.blue" /* CRYSTAL_ORE_BLUE */:
-    case "crystal_ore.yellow" /* CRYSTAL_ORE_YELLOW */:
-      return 0 /* SR */;
-    case "crystal.red" /* CRYSTAL_RED */:
-    case "crystal.blue" /* CRYSTAL_BLUE */:
-    case "crystal.yellow" /* CRYSTAL_YELLOW */:
-      return 1 /* SSR */;
-    case "refined_crystal.red" /* REFINED_CRYSTAL_RED */:
-    case "refined_crystal.blue" /* REFINED_CRYSTAL_BLUE */:
-    case "refined_crystal.yellow" /* REFINED_CRYSTAL_YELLOW */:
-      return 2 /* UR */;
-  }
-}
-function getCrystalImageURL(crystal) {
-  switch (crystal) {
-    case "crystal_ore.red" /* CRYSTAL_ORE_RED */:
-    case "crystal.red" /* CRYSTAL_RED */:
-    case "refined_crystal.red" /* REFINED_CRYSTAL_RED */:
-      return "/static/images/vermelho-removebg-preview.png";
-    case "crystal_ore.blue" /* CRYSTAL_ORE_BLUE */:
-    case "crystal.blue" /* CRYSTAL_BLUE */:
-    case "refined_crystal.blue" /* REFINED_CRYSTAL_BLUE */:
-      return "/static/images/azul-removebg-preview.png";
-    case "crystal_ore.yellow" /* CRYSTAL_ORE_YELLOW */:
-    case "crystal.yellow" /* CRYSTAL_YELLOW */:
-    case "refined_crystal.yellow" /* REFINED_CRYSTAL_YELLOW */:
-      return "/static/images/amarelo-removebg-preview.png";
-    default:
-      return "";
-  }
-}
+var color_red = "rgb(233, 30, 99)";
+var color_blue = "rgb(3, 169, 244)";
+var color_yellow = "rgb(255, 235, 59)";
+var image_red = "/static/images/vermelho-removebg-preview.png";
+var image_blue = "/static/images/azul-removebg-preview.png";
+var image_yellow = "/static/images/amarelo-removebg-preview.png";
+var Crystals = {
+  CRYSTAL_ORE_RED: new Item("crystal_ore.red", 0 /* SR */, image_red, color_red),
+  CRYSTAL_ORE_BLUE: new Item("crystal_ore.blue", 0 /* SR */, image_blue, color_blue),
+  CRYSTAL_ORE_YELLOW: new Item("crystal_ore.yellow", 0 /* SR */, image_yellow, color_yellow),
+  CRYSTAL_RED: new Item("crystal.red", 1 /* SSR */, image_red, color_red),
+  CRYSTAL_BLUE: new Item("crystal.blue", 1 /* SSR */, image_blue, color_blue),
+  CRYSTAL_YELLOW: new Item("crystal.yellow", 1 /* SSR */, image_yellow, color_yellow),
+  REFINED_CRYSTAL_RED: new Item("refined_crystal.red", 2 /* UR */, image_red, color_red),
+  REFINED_CRYSTAL_BLUE: new Item("refined_crystal.blue", 2 /* UR */, image_blue, color_blue),
+  REFINED_CRYSTAL_YELLOW: new Item("refined_crystal.yellow", 2 /* UR */, image_yellow, color_yellow)
+};
 
 // src/scripts/utils/lang.ts
 function getTranslation(lang, key) {
@@ -748,69 +821,159 @@ var pt = {
   "banquet": "Banquete"
 };
 
-// src/svelte/cristal-view/cristal-view.svelte
+// src/svelte/views/slot-view.svelte
 function create_fragment(ctx) {
-  let div2;
   let div1;
   let div0;
-  let t0;
+  let t;
   let img;
-  let t1;
-  let input;
-  let mounted;
-  let dispose;
+  let img_src_value;
   return {
     c() {
-      div2 = element("div");
       div1 = element("div");
       div0 = element("div");
-      t0 = space();
+      t = space();
       img = element("img");
-      t1 = space();
-      input = element("input");
-      attr(div0, "class", "card-inner-border svelte-17702vf");
-      attr(img, "alt", "Crystal");
-      attr(img, "class", "svelte-17702vf");
-      attr(div1, "class", "card super-card svelte-17702vf");
-      attr(input, "type", "number");
-      attr(input, "min", "0");
-      attr(input, "class", "svelte-17702vf");
-      attr(div2, "class", "layout svelte-17702vf");
+      attr(div0, "class", "inner-border svelte-5t5lvb");
+      if (!src_url_equal(img.src, img_src_value = getImage(
+        /*item*/
+        ctx[0]
+      ))) attr(img, "src", img_src_value);
+      attr(img, "alt", "Item");
+      attr(img, "class", "svelte-5t5lvb");
+      attr(div1, "class", "slot slot-shine svelte-5t5lvb");
     },
     m(target, anchor) {
-      insert(target, div2, anchor);
-      append(div2, div1);
+      insert(target, div1, anchor);
       append(div1, div0);
-      append(div1, t0);
+      append(div1, t);
       append(div1, img);
-      ctx[5](img);
-      ctx[6](div1);
-      append(div2, t1);
-      append(div2, input);
+      ctx[2](div1);
+    },
+    p(ctx2, [dirty]) {
+      if (dirty & /*item*/
+      1 && !src_url_equal(img.src, img_src_value = getImage(
+        /*item*/
+        ctx2[0]
+      ))) {
+        attr(img, "src", img_src_value);
+      }
+    },
+    i: noop,
+    o: noop,
+    d(detaching) {
+      if (detaching) {
+        detach(div1);
+      }
+      ctx[2](null);
+    }
+  };
+}
+function getImage(item) {
+  return item ? item.getImage() : "";
+}
+function instance($$self, $$props, $$invalidate) {
+  function update2() {
+    if (!el_slot) return;
+    if (item === null) {
+      el_slot.classList.remove("slot-shine");
+      el_slot.style.setProperty("--color-light", "#ffffff");
+      el_slot.style.setProperty("--color-dark", "#808080");
+    } else {
+      el_slot.classList.add("slot-shine");
+      el_slot.style.setProperty("--color-light", item.getRarityColor().light);
+      el_slot.style.setProperty("--color-dark", item.getRarityColor().dark);
+    }
+  }
+  onMount(() => {
+    update2();
+  });
+  let { item = null } = $$props;
+  let el_slot;
+  function div1_binding($$value) {
+    binding_callbacks[$$value ? "unshift" : "push"](() => {
+      el_slot = $$value;
+      $$invalidate(1, el_slot);
+    });
+  }
+  $$self.$$set = ($$props2) => {
+    if ("item" in $$props2) $$invalidate(0, item = $$props2.item);
+  };
+  $$self.$$.update = () => {
+    if ($$self.$$.dirty & /*item*/
+    1) {
+      $: item, update2();
+    }
+  };
+  return [item, el_slot, div1_binding];
+}
+var Slot_view = class extends SvelteComponent {
+  constructor(options) {
+    super();
+    init(this, options, instance, create_fragment, safe_not_equal, { item: 0 });
+  }
+};
+var slot_view_default = Slot_view;
+
+// src/svelte/views/crystal-editable-slot.svelte
+function create_fragment2(ctx) {
+  let div;
+  let slotview;
+  let t;
+  let input;
+  let current;
+  let mounted;
+  let dispose;
+  slotview = new slot_view_default({ props: { item: (
+    /*crystal*/
+    ctx[1]
+  ) } });
+  return {
+    c() {
+      div = element("div");
+      create_component(slotview.$$.fragment);
+      t = space();
+      input = element("input");
+      attr(input, "type", "number");
+      attr(input, "min", "0");
+      attr(input, "class", "svelte-q9nxhc");
+      attr(div, "class", "layout svelte-q9nxhc");
+    },
+    m(target, anchor) {
+      insert(target, div, anchor);
+      mount_component(slotview, div, null);
+      append(div, t);
+      append(div, input);
       set_input_value(
         input,
         /*count*/
         ctx[0]
       );
+      current = true;
       if (!mounted) {
         dispose = [
           listen(
             input,
             "input",
             /*input_input_handler*/
-            ctx[7]
+            ctx[3]
           ),
           listen(
             input,
             "change",
             /*change_handler*/
-            ctx[8]
+            ctx[4]
           )
         ];
         mounted = true;
       }
     },
     p(ctx2, [dirty]) {
+      const slotview_changes = {};
+      if (dirty & /*crystal*/
+      2) slotview_changes.item = /*crystal*/
+      ctx2[1];
+      slotview.$set(slotview_changes);
       if (dirty & /*count*/
       1 && to_number(input.value) !== /*count*/
       ctx2[0]) {
@@ -821,127 +984,294 @@ function create_fragment(ctx) {
         );
       }
     },
-    i: noop,
-    o: noop,
+    i(local) {
+      if (current) return;
+      transition_in(slotview.$$.fragment, local);
+      current = true;
+    },
+    o(local) {
+      transition_out(slotview.$$.fragment, local);
+      current = false;
+    },
     d(detaching) {
       if (detaching) {
-        detach(div2);
+        detach(div);
       }
-      ctx[5](null);
-      ctx[6](null);
+      destroy_component(slotview);
       mounted = false;
       run_all(dispose);
     }
   };
 }
-function instance($$self, $$props, $$invalidate) {
-  onMount(() => {
-    const crystal_image = getCrystalImageURL(crystal);
-    const crystal_rarity = getCrystalRarity(crystal);
-    const rarity_color = getRarityColor(crystal_rarity);
-    $$invalidate(2, el_img.src = crystal_image, el_img);
-    $$invalidate(3, el_card.style.background = `radial-gradient(circle, ${rarity_color.light} 0%, ${rarity_color.dark} 35%, rgba(0,0,0,1) 100%)`, el_card);
-    if (getCrystalRarity(crystal) === 0 /* SR */) {
-      el_card.classList.remove("super-card");
-    }
-  });
+function instance2($$self, $$props, $$invalidate) {
   let { crystal } = $$props;
   let { count = 0 } = $$props;
   let { onChanged } = $$props;
-  let el_img;
-  let el_card;
-  function img_binding($$value) {
-    binding_callbacks[$$value ? "unshift" : "push"](() => {
-      el_img = $$value;
-      $$invalidate(2, el_img);
-    });
-  }
-  function div1_binding($$value) {
-    binding_callbacks[$$value ? "unshift" : "push"](() => {
-      el_card = $$value;
-      $$invalidate(3, el_card);
-    });
-  }
   function input_input_handler() {
     count = to_number(this.value);
     $$invalidate(0, count);
   }
   const change_handler = (value) => {
+    if (onChanged === null) return;
     const num = Number.parseInt(value.currentTarget.value || "0");
     onChanged(num);
   };
   $$self.$$set = ($$props2) => {
-    if ("crystal" in $$props2) $$invalidate(4, crystal = $$props2.crystal);
+    if ("crystal" in $$props2) $$invalidate(1, crystal = $$props2.crystal);
     if ("count" in $$props2) $$invalidate(0, count = $$props2.count);
-    if ("onChanged" in $$props2) $$invalidate(1, onChanged = $$props2.onChanged);
+    if ("onChanged" in $$props2) $$invalidate(2, onChanged = $$props2.onChanged);
   };
-  return [
-    count,
-    onChanged,
-    el_img,
-    el_card,
-    crystal,
-    img_binding,
-    div1_binding,
-    input_input_handler,
-    change_handler
-  ];
+  return [count, crystal, onChanged, input_input_handler, change_handler];
 }
-var Cristal_view = class extends SvelteComponent {
+var Crystal_editable_slot = class extends SvelteComponent {
   constructor(options) {
     super();
-    init(this, options, instance, create_fragment, safe_not_equal, { crystal: 4, count: 0, onChanged: 1 });
+    init(this, options, instance2, create_fragment2, safe_not_equal, { crystal: 1, count: 0, onChanged: 2 });
   }
 };
-var cristal_view_default = Cristal_view;
+var crystal_editable_slot_default = Crystal_editable_slot;
+
+// src/svelte/views/footer.svelte
+function create_fragment3(ctx) {
+  let footer;
+  return {
+    c() {
+      footer = element("footer");
+      footer.innerHTML = `<p class="svelte-xsxslj">Develop by <a href="https://github.com/DarthIF" class="svelte-xsxslj">Darth IF</a></p>`;
+      attr(footer, "class", "svelte-xsxslj");
+    },
+    m(target, anchor) {
+      insert(target, footer, anchor);
+    },
+    p: noop,
+    i: noop,
+    o: noop,
+    d(detaching) {
+      if (detaching) {
+        detach(footer);
+      }
+    }
+  };
+}
+function instance3($$self) {
+  "use strict";
+  return [];
+}
+var Footer = class extends SvelteComponent {
+  constructor(options) {
+    super();
+    init(this, options, instance3, create_fragment3, safe_not_equal, {});
+  }
+};
+var footer_default = Footer;
+
+// src/svelte/views/card/outlined-card.svelte
+function create_fragment4(ctx) {
+  let div;
+  let current;
+  let mounted;
+  let dispose;
+  const default_slot_template = (
+    /*#slots*/
+    ctx[4].default
+  );
+  const default_slot = create_slot(
+    default_slot_template,
+    ctx,
+    /*$$scope*/
+    ctx[3],
+    null
+  );
+  return {
+    c() {
+      div = element("div");
+      if (default_slot) default_slot.c();
+      attr(div, "class", "outlined-card svelte-q7893m");
+      attr(
+        div,
+        "style",
+        /*style*/
+        ctx[0]
+      );
+    },
+    m(target, anchor) {
+      insert(target, div, anchor);
+      if (default_slot) {
+        default_slot.m(div, null);
+      }
+      ctx[7](div);
+      current = true;
+      if (!mounted) {
+        dispose = [
+          listen(
+            div,
+            "click",
+            /*click_handler*/
+            ctx[5]
+          ),
+          listen(
+            div,
+            "keypress",
+            /*keypress_handler*/
+            ctx[6]
+          )
+        ];
+        mounted = true;
+      }
+    },
+    p(ctx2, [dirty]) {
+      if (default_slot) {
+        if (default_slot.p && (!current || dirty & /*$$scope*/
+        8)) {
+          update_slot_base(
+            default_slot,
+            default_slot_template,
+            ctx2,
+            /*$$scope*/
+            ctx2[3],
+            !current ? get_all_dirty_from_scope(
+              /*$$scope*/
+              ctx2[3]
+            ) : get_slot_changes(
+              default_slot_template,
+              /*$$scope*/
+              ctx2[3],
+              dirty,
+              null
+            ),
+            null
+          );
+        }
+      }
+      if (!current || dirty & /*style*/
+      1) {
+        attr(
+          div,
+          "style",
+          /*style*/
+          ctx2[0]
+        );
+      }
+    },
+    i(local) {
+      if (current) return;
+      transition_in(default_slot, local);
+      current = true;
+    },
+    o(local) {
+      transition_out(default_slot, local);
+      current = false;
+    },
+    d(detaching) {
+      if (detaching) {
+        detach(div);
+      }
+      if (default_slot) default_slot.d(detaching);
+      ctx[7](null);
+      mounted = false;
+      run_all(dispose);
+    }
+  };
+}
+function instance4($$self, $$props, $$invalidate) {
+  let { $$slots: slots = {}, $$scope } = $$props;
+  function getElement() {
+    return element2;
+  }
+  let { style = "" } = $$props;
+  let element2;
+  function click_handler(event) {
+    bubble.call(this, $$self, event);
+  }
+  function keypress_handler(event) {
+    bubble.call(this, $$self, event);
+  }
+  function div_binding($$value) {
+    binding_callbacks[$$value ? "unshift" : "push"](() => {
+      element2 = $$value;
+      $$invalidate(1, element2);
+    });
+  }
+  $$self.$$set = ($$props2) => {
+    if ("style" in $$props2) $$invalidate(0, style = $$props2.style);
+    if ("$$scope" in $$props2) $$invalidate(3, $$scope = $$props2.$$scope);
+  };
+  return [
+    style,
+    element2,
+    getElement,
+    $$scope,
+    slots,
+    click_handler,
+    keypress_handler,
+    div_binding
+  ];
+}
+var Outlined_card = class extends SvelteComponent {
+  constructor(options) {
+    super();
+    init(this, options, instance4, create_fragment4, safe_not_equal, { getElement: 2, style: 0 });
+  }
+  get getElement() {
+    return this.$$.ctx[2];
+  }
+};
+var outlined_card_default = Outlined_card;
 
 // src/svelte/main.svelte
-function create_fragment2(ctx) {
-  let main;
-  let h10;
+function create_default_slot(ctx) {
+  let div6;
+  let div5;
+  let div0;
   let t0_value = getTranslation(
     /*lang*/
     ctx[1],
-    "app.header"
+    "trading_post"
   ) + "";
   let t0;
   let t1;
-  let div0;
-  let cristalview0;
+  let input0;
   let t2;
-  let cristalview1;
-  let t3;
-  let cristalview2;
-  let t4;
-  let cristalview3;
-  let t5;
-  let cristalview4;
-  let t6;
-  let cristalview5;
-  let t7;
-  let cristalview6;
-  let t8;
-  let cristalview7;
-  let t9;
-  let cristalview8;
-  let t10;
   let div1;
-  let h2;
-  let t11_value = getTranslation(
+  let t3_value = getTranslation(
     /*lang*/
     ctx[1],
-    "app.days"
+    "challenge_shop"
   ) + "";
-  let t11;
-  let t12;
-  let h11;
-  let t13_value = (
-    /*values*/
-    ctx[0].days + ""
-  );
-  let t13;
-  let t14;
+  let t3;
+  let t4;
+  let input1;
+  let t5;
   let div2;
+  let t6_value = getTranslation(
+    /*lang*/
+    ctx[1],
+    "golemore_mine"
+  ) + "";
+  let t6;
+  let t7;
+  let input2;
+  let t8;
+  let div3;
+  let t9_value = getTranslation(
+    /*lang*/
+    ctx[1],
+    "guild"
+  ) + "";
+  let t9;
+  let t10;
+  let input3;
+  let t11;
+  let div4;
+  let t12_value = getTranslation(
+    /*lang*/
+    ctx[1],
+    "banquet"
+  ) + "";
+  let t12;
+  let t13;
+  let input4;
+  let t14;
   let p0;
   let t15_value = getTranslation(
     /*lang*/
@@ -956,326 +1286,105 @@ function create_fragment2(ctx) {
     ctx[0].expected_ores_per_day + ""
   );
   let t17;
-  let t18;
-  let div8;
-  let div3;
-  let label0;
-  let t19_value = getTranslation(
-    /*lang*/
-    ctx[1],
-    "trading_post"
-  ) + "";
-  let t19;
-  let t20;
-  let input0;
-  let t21;
-  let div4;
-  let label1;
-  let t22_value = getTranslation(
-    /*lang*/
-    ctx[1],
-    "challenge_shop"
-  ) + "";
-  let t22;
-  let t23;
-  let input1;
-  let t24;
-  let div5;
-  let label2;
-  let t25_value = getTranslation(
-    /*lang*/
-    ctx[1],
-    "golemore_mine"
-  ) + "";
-  let t25;
-  let t26;
-  let input2;
-  let t27;
-  let div6;
-  let label3;
-  let t28_value = getTranslation(
-    /*lang*/
-    ctx[1],
-    "guild"
-  ) + "";
-  let t28;
-  let t29;
-  let input3;
-  let t30;
-  let div7;
-  let label4;
-  let t31_value = getTranslation(
-    /*lang*/
-    ctx[1],
-    "banquet"
-  ) + "";
-  let t31;
-  let t32;
-  let input4;
-  let current;
   let mounted;
   let dispose;
-  cristalview0 = new cristal_view_default({
-    props: {
-      crystal: "crystal_ore.red" /* CRYSTAL_ORE_RED */,
-      onChanged: (
-        /*func*/
-        ctx[3]
-      )
-    }
-  });
-  cristalview1 = new cristal_view_default({
-    props: {
-      crystal: "crystal_ore.blue" /* CRYSTAL_ORE_BLUE */,
-      onChanged: (
-        /*func_1*/
-        ctx[4]
-      )
-    }
-  });
-  cristalview2 = new cristal_view_default({
-    props: {
-      crystal: "crystal_ore.yellow" /* CRYSTAL_ORE_YELLOW */,
-      onChanged: (
-        /*func_2*/
-        ctx[5]
-      )
-    }
-  });
-  cristalview3 = new cristal_view_default({
-    props: {
-      crystal: "crystal.red" /* CRYSTAL_RED */,
-      onChanged: (
-        /*func_3*/
-        ctx[6]
-      )
-    }
-  });
-  cristalview4 = new cristal_view_default({
-    props: {
-      crystal: "crystal.blue" /* CRYSTAL_BLUE */,
-      onChanged: (
-        /*func_4*/
-        ctx[7]
-      )
-    }
-  });
-  cristalview5 = new cristal_view_default({
-    props: {
-      crystal: "crystal.yellow" /* CRYSTAL_YELLOW */,
-      onChanged: (
-        /*func_5*/
-        ctx[8]
-      )
-    }
-  });
-  cristalview6 = new cristal_view_default({
-    props: {
-      crystal: "refined_crystal.red" /* REFINED_CRYSTAL_RED */,
-      onChanged: (
-        /*func_6*/
-        ctx[9]
-      )
-    }
-  });
-  cristalview7 = new cristal_view_default({
-    props: {
-      crystal: "refined_crystal.blue" /* REFINED_CRYSTAL_BLUE */,
-      onChanged: (
-        /*func_7*/
-        ctx[10]
-      )
-    }
-  });
-  cristalview8 = new cristal_view_default({
-    props: {
-      crystal: "refined_crystal.yellow" /* REFINED_CRYSTAL_YELLOW */,
-      onChanged: (
-        /*func_8*/
-        ctx[11]
-      )
-    }
-  });
   return {
     c() {
-      main = element("main");
-      h10 = element("h1");
+      div6 = element("div");
+      div5 = element("div");
+      div0 = element("div");
       t0 = text(t0_value);
       t1 = space();
-      div0 = element("div");
-      create_component(cristalview0.$$.fragment);
+      input0 = element("input");
       t2 = space();
-      create_component(cristalview1.$$.fragment);
-      t3 = space();
-      create_component(cristalview2.$$.fragment);
-      t4 = space();
-      create_component(cristalview3.$$.fragment);
-      t5 = space();
-      create_component(cristalview4.$$.fragment);
-      t6 = space();
-      create_component(cristalview5.$$.fragment);
-      t7 = space();
-      create_component(cristalview6.$$.fragment);
-      t8 = space();
-      create_component(cristalview7.$$.fragment);
-      t9 = space();
-      create_component(cristalview8.$$.fragment);
-      t10 = space();
       div1 = element("div");
-      h2 = element("h2");
-      t11 = text(t11_value);
-      t12 = space();
-      h11 = element("h1");
-      t13 = text(t13_value);
-      t14 = space();
+      t3 = text(t3_value);
+      t4 = space();
+      input1 = element("input");
+      t5 = space();
       div2 = element("div");
+      t6 = text(t6_value);
+      t7 = space();
+      input2 = element("input");
+      t8 = space();
+      div3 = element("div");
+      t9 = text(t9_value);
+      t10 = space();
+      input3 = element("input");
+      t11 = space();
+      div4 = element("div");
+      t12 = text(t12_value);
+      t13 = space();
+      input4 = element("input");
+      t14 = space();
       p0 = element("p");
       t15 = text(t15_value);
       t16 = space();
       p1 = element("p");
       t17 = text(t17_value);
-      t18 = space();
-      div8 = element("div");
-      div3 = element("div");
-      label0 = element("label");
-      t19 = text(t19_value);
-      t20 = space();
-      input0 = element("input");
-      t21 = space();
-      div4 = element("div");
-      label1 = element("label");
-      t22 = text(t22_value);
-      t23 = space();
-      input1 = element("input");
-      t24 = space();
-      div5 = element("div");
-      label2 = element("label");
-      t25 = text(t25_value);
-      t26 = space();
-      input2 = element("input");
-      t27 = space();
-      div6 = element("div");
-      label3 = element("label");
-      t28 = text(t28_value);
-      t29 = space();
-      input3 = element("input");
-      t30 = space();
-      div7 = element("div");
-      label4 = element("label");
-      t31 = text(t31_value);
-      t32 = space();
-      input4 = element("input");
-      set_style(h10, "margin", "auto");
-      attr(h10, "class", "svelte-1idsn7m");
-      attr(div0, "class", "crystal-group svelte-1idsn7m");
-      attr(h2, "class", "svelte-1idsn7m");
-      attr(h11, "class", "svelte-1idsn7m");
-      attr(div1, "class", "days-group svelte-1idsn7m");
-      attr(p0, "class", "svelte-1idsn7m");
-      attr(p1, "class", "svelte-1idsn7m");
-      attr(div2, "class", "information-group svelte-1idsn7m");
-      attr(label0, "for", "trading_post");
       attr(input0, "type", "checkbox");
       attr(input0, "id", "trading_post");
-      attr(div3, "class", "input-chip svelte-1idsn7m");
-      attr(label1, "for", "challenge_shop");
+      attr(div0, "class", "store-chip svelte-a3r742");
       attr(input1, "type", "checkbox");
       attr(input1, "id", "challenge_shop");
-      attr(div4, "class", "input-chip svelte-1idsn7m");
-      attr(label2, "for", "golemore_mine");
+      attr(div1, "class", "store-chip svelte-a3r742");
       attr(input2, "type", "checkbox");
       attr(input2, "id", "golemore_mine");
-      attr(div5, "class", "input-chip svelte-1idsn7m");
-      attr(label3, "for", "guild");
+      attr(div2, "class", "store-chip svelte-a3r742");
       attr(input3, "type", "checkbox");
       attr(input3, "id", "guild");
-      attr(div6, "class", "input-chip svelte-1idsn7m");
-      attr(label4, "for", "banquet");
+      attr(div3, "class", "store-chip svelte-a3r742");
       attr(input4, "type", "checkbox");
       attr(input4, "id", "banquet");
-      attr(div7, "class", "input-chip svelte-1idsn7m");
-      attr(div8, "class", "options-group svelte-1idsn7m");
-      attr(main, "class", "svelte-1idsn7m");
+      attr(div4, "class", "store-chip svelte-a3r742");
+      attr(div5, "class", "stores-group svelte-a3r742");
+      attr(p0, "class", "svelte-a3r742");
+      attr(p1, "class", "svelte-a3r742");
+      attr(div6, "class", "card-stores-container svelte-a3r742");
     },
     m(target, anchor) {
-      insert(target, main, anchor);
-      append(main, h10);
-      append(h10, t0);
-      append(main, t1);
-      append(main, div0);
-      mount_component(cristalview0, div0, null);
-      append(div0, t2);
-      mount_component(cristalview1, div0, null);
-      append(div0, t3);
-      mount_component(cristalview2, div0, null);
-      append(div0, t4);
-      mount_component(cristalview3, div0, null);
-      append(div0, t5);
-      mount_component(cristalview4, div0, null);
-      append(div0, t6);
-      mount_component(cristalview5, div0, null);
-      append(div0, t7);
-      mount_component(cristalview6, div0, null);
-      append(div0, t8);
-      mount_component(cristalview7, div0, null);
-      append(div0, t9);
-      mount_component(cristalview8, div0, null);
-      append(main, t10);
-      append(main, div1);
-      append(div1, h2);
-      append(h2, t11);
-      append(div1, t12);
-      append(div1, h11);
-      append(h11, t13);
-      append(main, t14);
-      append(main, div2);
-      append(div2, p0);
-      append(p0, t15);
-      append(div2, t16);
-      append(div2, p1);
-      append(p1, t17);
-      append(main, t18);
-      append(main, div8);
-      append(div8, div3);
-      append(div3, label0);
-      append(label0, t19);
-      append(div3, t20);
-      append(div3, input0);
+      insert(target, div6, anchor);
+      append(div6, div5);
+      append(div5, div0);
+      append(div0, t0);
+      append(div0, t1);
+      append(div0, input0);
       input0.checked = /*values*/
       ctx[0].trading_post;
-      append(div8, t21);
-      append(div8, div4);
-      append(div4, label1);
-      append(label1, t22);
-      append(div4, t23);
-      append(div4, input1);
+      append(div5, t2);
+      append(div5, div1);
+      append(div1, t3);
+      append(div1, t4);
+      append(div1, input1);
       input1.checked = /*values*/
       ctx[0].challenge_shop;
-      append(div8, t24);
-      append(div8, div5);
-      append(div5, label2);
-      append(label2, t25);
-      append(div5, t26);
-      append(div5, input2);
+      append(div5, t5);
+      append(div5, div2);
+      append(div2, t6);
+      append(div2, t7);
+      append(div2, input2);
       input2.checked = /*values*/
       ctx[0].golemore_mine;
-      append(div8, t27);
-      append(div8, div6);
-      append(div6, label3);
-      append(label3, t28);
-      append(div6, t29);
-      append(div6, input3);
+      append(div5, t8);
+      append(div5, div3);
+      append(div3, t9);
+      append(div3, t10);
+      append(div3, input3);
       input3.checked = /*values*/
       ctx[0].guild;
-      append(div8, t30);
-      append(div8, div7);
-      append(div7, label4);
-      append(label4, t31);
-      append(div7, t32);
-      append(div7, input4);
+      append(div5, t11);
+      append(div5, div4);
+      append(div4, t12);
+      append(div4, t13);
+      append(div4, input4);
       input4.checked = /*values*/
       ctx[0].banquet;
-      current = true;
+      append(div6, t14);
+      append(div6, p0);
+      append(p0, t15);
+      append(div6, t16);
+      append(div6, p1);
+      append(p1, t17);
       if (!mounted) {
         dispose = [
           listen(
@@ -1284,63 +1393,368 @@ function create_fragment2(ctx) {
             /*input0_change_handler*/
             ctx[12]
           ),
+          listen(input0, "click", stopMouseEvents),
           listen(
             input0,
             "change",
             /*change_handler*/
             ctx[13]
           ),
+          listen(div0, "click", toggleChildCheckbox),
           listen(
             input1,
             "change",
             /*input1_change_handler*/
             ctx[14]
           ),
+          listen(input1, "click", stopMouseEvents),
           listen(
             input1,
             "change",
             /*change_handler_1*/
             ctx[15]
           ),
+          listen(div1, "click", toggleChildCheckbox),
           listen(
             input2,
             "change",
             /*input2_change_handler*/
             ctx[16]
           ),
+          listen(input2, "click", stopMouseEvents),
           listen(
             input2,
             "change",
             /*change_handler_2*/
             ctx[17]
           ),
+          listen(div2, "click", toggleChildCheckbox),
           listen(
             input3,
             "change",
             /*input3_change_handler*/
             ctx[18]
           ),
+          listen(input3, "click", stopMouseEvents),
           listen(
             input3,
             "change",
             /*change_handler_3*/
             ctx[19]
           ),
+          listen(div3, "click", toggleChildCheckbox),
           listen(
             input4,
             "change",
             /*input4_change_handler*/
             ctx[20]
           ),
+          listen(input4, "click", stopMouseEvents),
           listen(
             input4,
             "change",
             /*change_handler_4*/
             ctx[21]
-          )
+          ),
+          listen(div4, "click", toggleChildCheckbox)
         ];
         mounted = true;
       }
+    },
+    p(ctx2, dirty) {
+      if (dirty & /*lang*/
+      2 && t0_value !== (t0_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "trading_post"
+      ) + "")) set_data(t0, t0_value);
+      if (dirty & /*values*/
+      1) {
+        input0.checked = /*values*/
+        ctx2[0].trading_post;
+      }
+      if (dirty & /*lang*/
+      2 && t3_value !== (t3_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "challenge_shop"
+      ) + "")) set_data(t3, t3_value);
+      if (dirty & /*values*/
+      1) {
+        input1.checked = /*values*/
+        ctx2[0].challenge_shop;
+      }
+      if (dirty & /*lang*/
+      2 && t6_value !== (t6_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "golemore_mine"
+      ) + "")) set_data(t6, t6_value);
+      if (dirty & /*values*/
+      1) {
+        input2.checked = /*values*/
+        ctx2[0].golemore_mine;
+      }
+      if (dirty & /*lang*/
+      2 && t9_value !== (t9_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "guild"
+      ) + "")) set_data(t9, t9_value);
+      if (dirty & /*values*/
+      1) {
+        input3.checked = /*values*/
+        ctx2[0].guild;
+      }
+      if (dirty & /*lang*/
+      2 && t12_value !== (t12_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "banquet"
+      ) + "")) set_data(t12, t12_value);
+      if (dirty & /*values*/
+      1) {
+        input4.checked = /*values*/
+        ctx2[0].banquet;
+      }
+      if (dirty & /*lang*/
+      2 && t15_value !== (t15_value = getTranslation(
+        /*lang*/
+        ctx2[1],
+        "app.information"
+      ) + "")) set_data(t15, t15_value);
+      if (dirty & /*values*/
+      1 && t17_value !== (t17_value = /*values*/
+      ctx2[0].expected_ores_per_day + "")) set_data(t17, t17_value);
+    },
+    d(detaching) {
+      if (detaching) {
+        detach(div6);
+      }
+      mounted = false;
+      run_all(dispose);
+    }
+  };
+}
+function create_fragment5(ctx) {
+  let main;
+  let h10;
+  let t0_value = getTranslation(
+    /*lang*/
+    ctx[1],
+    "app.header"
+  ) + "";
+  let t0;
+  let t1;
+  let div0;
+  let crystaleditableslot0;
+  let t2;
+  let crystaleditableslot1;
+  let t3;
+  let crystaleditableslot2;
+  let t4;
+  let crystaleditableslot3;
+  let t5;
+  let crystaleditableslot4;
+  let t6;
+  let crystaleditableslot5;
+  let t7;
+  let crystaleditableslot6;
+  let t8;
+  let crystaleditableslot7;
+  let t9;
+  let crystaleditableslot8;
+  let t10;
+  let div1;
+  let h2;
+  let t11_value = getTranslation(
+    /*lang*/
+    ctx[1],
+    "app.days"
+  ) + "";
+  let t11;
+  let t12;
+  let h11;
+  let t13_value = (Number.isNaN(
+    /*values*/
+    ctx[0].days
+  ) === false ? (
+    /*values*/
+    ctx[0].days
+  ) : "\u221E") + "";
+  let t13;
+  let t14;
+  let outlinedcard;
+  let t15;
+  let footer;
+  let current;
+  crystaleditableslot0 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_ORE_RED,
+      onChanged: (
+        /*func*/
+        ctx[3]
+      )
+    }
+  });
+  crystaleditableslot1 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_ORE_BLUE,
+      onChanged: (
+        /*func_1*/
+        ctx[4]
+      )
+    }
+  });
+  crystaleditableslot2 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_ORE_YELLOW,
+      onChanged: (
+        /*func_2*/
+        ctx[5]
+      )
+    }
+  });
+  crystaleditableslot3 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_RED,
+      onChanged: (
+        /*func_3*/
+        ctx[6]
+      )
+    }
+  });
+  crystaleditableslot4 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_BLUE,
+      onChanged: (
+        /*func_4*/
+        ctx[7]
+      )
+    }
+  });
+  crystaleditableslot5 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.CRYSTAL_YELLOW,
+      onChanged: (
+        /*func_5*/
+        ctx[8]
+      )
+    }
+  });
+  crystaleditableslot6 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.REFINED_CRYSTAL_RED,
+      onChanged: (
+        /*func_6*/
+        ctx[9]
+      )
+    }
+  });
+  crystaleditableslot7 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.REFINED_CRYSTAL_BLUE,
+      onChanged: (
+        /*func_7*/
+        ctx[10]
+      )
+    }
+  });
+  crystaleditableslot8 = new crystal_editable_slot_default({
+    props: {
+      crystal: Crystals.REFINED_CRYSTAL_YELLOW,
+      onChanged: (
+        /*func_8*/
+        ctx[11]
+      )
+    }
+  });
+  outlinedcard = new outlined_card_default({
+    props: {
+      style: "margin: 16px; 0",
+      $$slots: { default: [create_default_slot] },
+      $$scope: { ctx }
+    }
+  });
+  footer = new footer_default({});
+  return {
+    c() {
+      main = element("main");
+      h10 = element("h1");
+      t0 = text(t0_value);
+      t1 = space();
+      div0 = element("div");
+      create_component(crystaleditableslot0.$$.fragment);
+      t2 = space();
+      create_component(crystaleditableslot1.$$.fragment);
+      t3 = space();
+      create_component(crystaleditableslot2.$$.fragment);
+      t4 = space();
+      create_component(crystaleditableslot3.$$.fragment);
+      t5 = space();
+      create_component(crystaleditableslot4.$$.fragment);
+      t6 = space();
+      create_component(crystaleditableslot5.$$.fragment);
+      t7 = space();
+      create_component(crystaleditableslot6.$$.fragment);
+      t8 = space();
+      create_component(crystaleditableslot7.$$.fragment);
+      t9 = space();
+      create_component(crystaleditableslot8.$$.fragment);
+      t10 = space();
+      div1 = element("div");
+      h2 = element("h2");
+      t11 = text(t11_value);
+      t12 = space();
+      h11 = element("h1");
+      t13 = text(t13_value);
+      t14 = space();
+      create_component(outlinedcard.$$.fragment);
+      t15 = space();
+      create_component(footer.$$.fragment);
+      set_style(h10, "margin", "auto");
+      attr(h10, "class", "svelte-a3r742");
+      attr(div0, "class", "crystal-group svelte-a3r742");
+      attr(h2, "class", "svelte-a3r742");
+      attr(h11, "class", "svelte-a3r742");
+      attr(div1, "class", "days-group svelte-a3r742");
+      attr(main, "class", "svelte-a3r742");
+    },
+    m(target, anchor) {
+      insert(target, main, anchor);
+      append(main, h10);
+      append(h10, t0);
+      append(main, t1);
+      append(main, div0);
+      mount_component(crystaleditableslot0, div0, null);
+      append(div0, t2);
+      mount_component(crystaleditableslot1, div0, null);
+      append(div0, t3);
+      mount_component(crystaleditableslot2, div0, null);
+      append(div0, t4);
+      mount_component(crystaleditableslot3, div0, null);
+      append(div0, t5);
+      mount_component(crystaleditableslot4, div0, null);
+      append(div0, t6);
+      mount_component(crystaleditableslot5, div0, null);
+      append(div0, t7);
+      mount_component(crystaleditableslot6, div0, null);
+      append(div0, t8);
+      mount_component(crystaleditableslot7, div0, null);
+      append(div0, t9);
+      mount_component(crystaleditableslot8, div0, null);
+      append(main, t10);
+      append(main, div1);
+      append(div1, h2);
+      append(h2, t11);
+      append(div1, t12);
+      append(div1, h11);
+      append(h11, t13);
+      append(main, t14);
+      mount_component(outlinedcard, main, null);
+      insert(target, t15, anchor);
+      mount_component(footer, target, anchor);
+      current = true;
     },
     p(ctx2, [dirty]) {
       if ((!current || dirty & /*lang*/
@@ -1349,51 +1763,51 @@ function create_fragment2(ctx) {
         ctx2[1],
         "app.header"
       ) + "")) set_data(t0, t0_value);
-      const cristalview0_changes = {};
+      const crystaleditableslot0_changes = {};
       if (dirty & /*values*/
-      1) cristalview0_changes.onChanged = /*func*/
+      1) crystaleditableslot0_changes.onChanged = /*func*/
       ctx2[3];
-      cristalview0.$set(cristalview0_changes);
-      const cristalview1_changes = {};
+      crystaleditableslot0.$set(crystaleditableslot0_changes);
+      const crystaleditableslot1_changes = {};
       if (dirty & /*values*/
-      1) cristalview1_changes.onChanged = /*func_1*/
+      1) crystaleditableslot1_changes.onChanged = /*func_1*/
       ctx2[4];
-      cristalview1.$set(cristalview1_changes);
-      const cristalview2_changes = {};
+      crystaleditableslot1.$set(crystaleditableslot1_changes);
+      const crystaleditableslot2_changes = {};
       if (dirty & /*values*/
-      1) cristalview2_changes.onChanged = /*func_2*/
+      1) crystaleditableslot2_changes.onChanged = /*func_2*/
       ctx2[5];
-      cristalview2.$set(cristalview2_changes);
-      const cristalview3_changes = {};
+      crystaleditableslot2.$set(crystaleditableslot2_changes);
+      const crystaleditableslot3_changes = {};
       if (dirty & /*values*/
-      1) cristalview3_changes.onChanged = /*func_3*/
+      1) crystaleditableslot3_changes.onChanged = /*func_3*/
       ctx2[6];
-      cristalview3.$set(cristalview3_changes);
-      const cristalview4_changes = {};
+      crystaleditableslot3.$set(crystaleditableslot3_changes);
+      const crystaleditableslot4_changes = {};
       if (dirty & /*values*/
-      1) cristalview4_changes.onChanged = /*func_4*/
+      1) crystaleditableslot4_changes.onChanged = /*func_4*/
       ctx2[7];
-      cristalview4.$set(cristalview4_changes);
-      const cristalview5_changes = {};
+      crystaleditableslot4.$set(crystaleditableslot4_changes);
+      const crystaleditableslot5_changes = {};
       if (dirty & /*values*/
-      1) cristalview5_changes.onChanged = /*func_5*/
+      1) crystaleditableslot5_changes.onChanged = /*func_5*/
       ctx2[8];
-      cristalview5.$set(cristalview5_changes);
-      const cristalview6_changes = {};
+      crystaleditableslot5.$set(crystaleditableslot5_changes);
+      const crystaleditableslot6_changes = {};
       if (dirty & /*values*/
-      1) cristalview6_changes.onChanged = /*func_6*/
+      1) crystaleditableslot6_changes.onChanged = /*func_6*/
       ctx2[9];
-      cristalview6.$set(cristalview6_changes);
-      const cristalview7_changes = {};
+      crystaleditableslot6.$set(crystaleditableslot6_changes);
+      const crystaleditableslot7_changes = {};
       if (dirty & /*values*/
-      1) cristalview7_changes.onChanged = /*func_7*/
+      1) crystaleditableslot7_changes.onChanged = /*func_7*/
       ctx2[10];
-      cristalview7.$set(cristalview7_changes);
-      const cristalview8_changes = {};
+      crystaleditableslot7.$set(crystaleditableslot7_changes);
+      const crystaleditableslot8_changes = {};
       if (dirty & /*values*/
-      1) cristalview8_changes.onChanged = /*func_8*/
+      1) crystaleditableslot8_changes.onChanged = /*func_8*/
       ctx2[11];
-      cristalview8.$set(cristalview8_changes);
+      crystaleditableslot8.$set(crystaleditableslot8_changes);
       if ((!current || dirty & /*lang*/
       2) && t11_value !== (t11_value = getTranslation(
         /*lang*/
@@ -1401,113 +1815,65 @@ function create_fragment2(ctx) {
         "app.days"
       ) + "")) set_data(t11, t11_value);
       if ((!current || dirty & /*values*/
-      1) && t13_value !== (t13_value = /*values*/
-      ctx2[0].days + "")) set_data(t13, t13_value);
-      if ((!current || dirty & /*lang*/
-      2) && t15_value !== (t15_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "app.information"
-      ) + "")) set_data(t15, t15_value);
-      if ((!current || dirty & /*values*/
-      1) && t17_value !== (t17_value = /*values*/
-      ctx2[0].expected_ores_per_day + "")) set_data(t17, t17_value);
-      if ((!current || dirty & /*lang*/
-      2) && t19_value !== (t19_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "trading_post"
-      ) + "")) set_data(t19, t19_value);
-      if (dirty & /*values*/
-      1) {
-        input0.checked = /*values*/
-        ctx2[0].trading_post;
+      1) && t13_value !== (t13_value = (Number.isNaN(
+        /*values*/
+        ctx2[0].days
+      ) === false ? (
+        /*values*/
+        ctx2[0].days
+      ) : "\u221E") + "")) set_data(t13, t13_value);
+      const outlinedcard_changes = {};
+      if (dirty & /*$$scope, values, lang*/
+      8388611) {
+        outlinedcard_changes.$$scope = { dirty, ctx: ctx2 };
       }
-      if ((!current || dirty & /*lang*/
-      2) && t22_value !== (t22_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "challenge_shop"
-      ) + "")) set_data(t22, t22_value);
-      if (dirty & /*values*/
-      1) {
-        input1.checked = /*values*/
-        ctx2[0].challenge_shop;
-      }
-      if ((!current || dirty & /*lang*/
-      2) && t25_value !== (t25_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "golemore_mine"
-      ) + "")) set_data(t25, t25_value);
-      if (dirty & /*values*/
-      1) {
-        input2.checked = /*values*/
-        ctx2[0].golemore_mine;
-      }
-      if ((!current || dirty & /*lang*/
-      2) && t28_value !== (t28_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "guild"
-      ) + "")) set_data(t28, t28_value);
-      if (dirty & /*values*/
-      1) {
-        input3.checked = /*values*/
-        ctx2[0].guild;
-      }
-      if ((!current || dirty & /*lang*/
-      2) && t31_value !== (t31_value = getTranslation(
-        /*lang*/
-        ctx2[1],
-        "banquet"
-      ) + "")) set_data(t31, t31_value);
-      if (dirty & /*values*/
-      1) {
-        input4.checked = /*values*/
-        ctx2[0].banquet;
-      }
+      outlinedcard.$set(outlinedcard_changes);
     },
     i(local) {
       if (current) return;
-      transition_in(cristalview0.$$.fragment, local);
-      transition_in(cristalview1.$$.fragment, local);
-      transition_in(cristalview2.$$.fragment, local);
-      transition_in(cristalview3.$$.fragment, local);
-      transition_in(cristalview4.$$.fragment, local);
-      transition_in(cristalview5.$$.fragment, local);
-      transition_in(cristalview6.$$.fragment, local);
-      transition_in(cristalview7.$$.fragment, local);
-      transition_in(cristalview8.$$.fragment, local);
+      transition_in(crystaleditableslot0.$$.fragment, local);
+      transition_in(crystaleditableslot1.$$.fragment, local);
+      transition_in(crystaleditableslot2.$$.fragment, local);
+      transition_in(crystaleditableslot3.$$.fragment, local);
+      transition_in(crystaleditableslot4.$$.fragment, local);
+      transition_in(crystaleditableslot5.$$.fragment, local);
+      transition_in(crystaleditableslot6.$$.fragment, local);
+      transition_in(crystaleditableslot7.$$.fragment, local);
+      transition_in(crystaleditableslot8.$$.fragment, local);
+      transition_in(outlinedcard.$$.fragment, local);
+      transition_in(footer.$$.fragment, local);
       current = true;
     },
     o(local) {
-      transition_out(cristalview0.$$.fragment, local);
-      transition_out(cristalview1.$$.fragment, local);
-      transition_out(cristalview2.$$.fragment, local);
-      transition_out(cristalview3.$$.fragment, local);
-      transition_out(cristalview4.$$.fragment, local);
-      transition_out(cristalview5.$$.fragment, local);
-      transition_out(cristalview6.$$.fragment, local);
-      transition_out(cristalview7.$$.fragment, local);
-      transition_out(cristalview8.$$.fragment, local);
+      transition_out(crystaleditableslot0.$$.fragment, local);
+      transition_out(crystaleditableslot1.$$.fragment, local);
+      transition_out(crystaleditableslot2.$$.fragment, local);
+      transition_out(crystaleditableslot3.$$.fragment, local);
+      transition_out(crystaleditableslot4.$$.fragment, local);
+      transition_out(crystaleditableslot5.$$.fragment, local);
+      transition_out(crystaleditableslot6.$$.fragment, local);
+      transition_out(crystaleditableslot7.$$.fragment, local);
+      transition_out(crystaleditableslot8.$$.fragment, local);
+      transition_out(outlinedcard.$$.fragment, local);
+      transition_out(footer.$$.fragment, local);
       current = false;
     },
     d(detaching) {
       if (detaching) {
         detach(main);
+        detach(t15);
       }
-      destroy_component(cristalview0);
-      destroy_component(cristalview1);
-      destroy_component(cristalview2);
-      destroy_component(cristalview3);
-      destroy_component(cristalview4);
-      destroy_component(cristalview5);
-      destroy_component(cristalview6);
-      destroy_component(cristalview7);
-      destroy_component(cristalview8);
-      mounted = false;
-      run_all(dispose);
+      destroy_component(crystaleditableslot0);
+      destroy_component(crystaleditableslot1);
+      destroy_component(crystaleditableslot2);
+      destroy_component(crystaleditableslot3);
+      destroy_component(crystaleditableslot4);
+      destroy_component(crystaleditableslot5);
+      destroy_component(crystaleditableslot6);
+      destroy_component(crystaleditableslot7);
+      destroy_component(crystaleditableslot8);
+      destroy_component(outlinedcard);
+      destroy_component(footer, detaching);
     }
   };
 }
@@ -1516,7 +1882,13 @@ function round(value, step) {
   const inverse = 1 / step;
   return Math.round(value * inverse) / inverse;
 }
-function instance2($$self, $$props, $$invalidate) {
+function toggleChildCheckbox(e) {
+  e.currentTarget.querySelector("input")?.click();
+}
+function stopMouseEvents(e) {
+  e.stopPropagation();
+}
+function instance5($$self, $$props, $$invalidate) {
   function update2() {
     $$invalidate(0, values.expected_ores_per_day = 0, values);
     if (values.trading_post) {
@@ -1569,7 +1941,7 @@ function instance2($$self, $$props, $$invalidate) {
   }
   onMount(() => {
     if (navigator.language.startsWith("pt")) {
-      $$invalidate(1, lang = 1 /* EN */);
+      $$invalidate(1, lang = 0 /* PT */);
     }
     update2();
   });
@@ -1697,7 +2069,7 @@ function instance2($$self, $$props, $$invalidate) {
 var Main = class extends SvelteComponent {
   constructor(options) {
     super();
-    init(this, options, instance2, create_fragment2, safe_not_equal, {});
+    init(this, options, instance5, create_fragment5, safe_not_equal, {});
   }
 };
 var main_default = Main;

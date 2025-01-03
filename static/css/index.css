@@ -10,3 +10,37 @@ body {
     font-size: 16px;
     line-height: 1.5;
 }
+
+/* ---------- MATERIAL LITE ---------- */
+:root {
+    /* Elevation tokens */
+    /* https://m3.material.io/styles/elevation/tokens#de5fa6de-e1a4-4f00-b760-dc3dd8b863eb */
+    --md-sys-elevation-level0: 0px;
+    --md-sys-elevation-level1: 1px;
+    --md-sys-elevation-level2: 3px;
+    --md-sys-elevation-level3: 6px;
+    --md-sys-elevation-level4: 8px;
+    --md-sys-elevation-level5: 12px;
+
+    /* Shape tokens */
+    /* https://m3.material.io/styles/shape/shape-scale-tokens#a830b8f8-f15b-4be9-8b2e-839f78481cf2 */
+    --md-sys-shape-corner-full: 50% 50%;
+    --md-sys-shape-corner-extra-large-top: 28px 28px 0 0;
+    --md-sys-shape-corner-extra-large: 28px;
+    --md-sys-shape-corner-large-top: 16px 16px 0 0;
+    --md-sys-shape-corner-large-end: 0 16px 16px 0;
+    --md-sys-shape-corner-large-start: 16px 0 0 16px;
+    --md-sys-shape-corner-large: 16px;
+    --md-sys-shape-corner-medium: 12px;
+    --md-sys-shape-corner-small: 8px;
+    --md-sys-shape-corner-extra-small-top: 4px 4px 0 0;
+    --md-sys-shape-corner-extra-small: 4px;
+    --md-sys-shape-corner-none: 0px;
+
+    /* State layer tokens & values */
+    /* https://m3.material.io/foundations/interaction/states/state-layers#ec68aa40-c1aa-410a-b677-e83f6f2ba021 */
+    --state_hover_opacity: 0.08;
+    --state_focus_opacity: 0.12;
+    --state_pressed_opacity: 0.12;
+    --state_dragged_opacity: 0.16;
+}

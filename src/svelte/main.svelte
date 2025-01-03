@@ -1,12 +1,18 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import {
-        Crystal,
         CRYSTAL_TO_ORE,
+        Crystals,
         REFINED_TO_ORE,
     } from "../scripts/utils/crystal";
     import { getTranslation, Lang } from "../scripts/utils/lang";
-    import CristalView from "./cristal-view/cristal-view.svelte";
+    import CrystalEditableSlot from "./views/crystal-editable-slot.svelte";
+    import Footer from "./views/footer.svelte";
+    import OutlinedCard from "./views/card/outlined-card.svelte";
+
+    type MouseDivEventType = MouseEvent & {
+        currentTarget: EventTarget & HTMLDivElement;
+    };
 
     function round(value: number, step: number) {
         // https://stackoverflow.com/a/34591063/16081650
@@ -16,6 +22,16 @@
         const inverse = 1.0 / step;
         return Math.round(value * inverse) / inverse;
     }
+
+    function toggleChildCheckbox(e: MouseDivEventType) {
+        e.currentTarget.querySelector("input")?.click();
+    }
+
+    function stopMouseEvents(e: MouseEvent) {
+        e.stopPropagation();
+    }
+
+    // ------------------------------------------
 
     function update() {
         values.expected_ores_per_day = 0;
@@ -90,9 +106,11 @@
         console.log("days=" + days);
     }
 
+    // ------------------------------------------
+
     onMount(() => {
         if (navigator.language.startsWith("pt")) {
-            lang = Lang.EN;
+            lang = Lang.PT;
         }
 
         update();
@@ -140,22 +158,22 @@
 
     <div class="crystal-group">
         <!-- Ore -->
-        <CristalView
-            crystal={Crystal.CRYSTAL_ORE_RED}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_ORE_RED}
             onChanged={(value) => {
                 values.ore.red = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.CRYSTAL_ORE_BLUE}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_ORE_BLUE}
             onChanged={(value) => {
                 values.ore.blue = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.CRYSTAL_ORE_YELLOW}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_ORE_YELLOW}
             onChanged={(value) => {
                 values.ore.yellow = value;
                 update();
@@ -163,22 +181,22 @@
         />
 
         <!-- Crystal -->
-        <CristalView
-            crystal={Crystal.CRYSTAL_RED}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_RED}
             onChanged={(value) => {
                 values.crystal.red = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.CRYSTAL_BLUE}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_BLUE}
             onChanged={(value) => {
                 values.crystal.blue = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.CRYSTAL_YELLOW}
+        <CrystalEditableSlot
+            crystal={Crystals.CRYSTAL_YELLOW}
             onChanged={(value) => {
                 values.crystal.yellow = value;
                 update();
@@ -186,22 +204,22 @@
         />
 
         <!-- Refined -->
-        <CristalView
-            crystal={Crystal.REFINED_CRYSTAL_RED}
+        <CrystalEditableSlot
+            crystal={Crystals.REFINED_CRYSTAL_RED}
             onChanged={(value) => {
                 values.refined.red = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.REFINED_CRYSTAL_BLUE}
+        <CrystalEditableSlot
+            crystal={Crystals.REFINED_CRYSTAL_BLUE}
             onChanged={(value) => {
                 values.refined.blue = value;
                 update();
             }}
         />
-        <CristalView
-            crystal={Crystal.REFINED_CRYSTAL_YELLOW}
+        <CrystalEditableSlot
+            crystal={Crystals.REFINED_CRYSTAL_YELLOW}
             onChanged={(value) => {
                 values.refined.yellow = value;
                 update();
@@ -212,99 +230,112 @@
     <div class="days-group">
         <h2>{getTranslation(lang, "app.days")}</h2>
         <h1>
-            {values.days}
+            {Number.isNaN(values.days) === false ? values.days : "∞"}
         </h1>
     </div>
 
-    <div class="information-group">
-        <p>{getTranslation(lang, "app.information")}</p>
-        <p>{values.expected_ores_per_day}</p>
-    </div>
-    <div class="options-group">
-        <!-- Trading Post -->
-        <div class="input-chip">
-            <label for="trading_post">
-                {getTranslation(lang, "trading_post")}
-            </label>
-            <input
-                type="checkbox"
-                id="trading_post"
-                bind:checked={values.trading_post}
-                on:change={(e) => {
-                    values.trading_post = e.currentTarget.checked;
-                    update();
-                }}
-            />
-        </div>
+    <OutlinedCard style="margin: 16px; 0">
+        <div class="card-stores-container">
+            <div class="stores-group">
+                <!-- Trading Post -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <div class="store-chip" on:click={toggleChildCheckbox}>
+                    {getTranslation(lang, "trading_post")}
+                    <input
+                        type="checkbox"
+                        id="trading_post"
+                        bind:checked={values.trading_post}
+                        on:click={stopMouseEvents}
+                        on:change={(e) => {
+                            values.trading_post = e.currentTarget.checked;
+                            update();
+                        }}
+                    />
+                </div>
 
-        <!-- Challenge Shop -->
-        <div class="input-chip">
-            <label for="challenge_shop">
-                {getTranslation(lang, "challenge_shop")}
-            </label>
-            <input
-                type="checkbox"
-                id="challenge_shop"
-                bind:checked={values.challenge_shop}
-                on:change={(e) => {
-                    values.challenge_shop = e.currentTarget.checked;
-                    update();
-                }}
-            />
-        </div>
+                <!-- Challenge Shop -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <div class="store-chip" on:click={toggleChildCheckbox}>
+                    {getTranslation(lang, "challenge_shop")}
+                    <input
+                        type="checkbox"
+                        id="challenge_shop"
+                        bind:checked={values.challenge_shop}
+                        on:click={stopMouseEvents}
+                        on:change={(e) => {
+                            values.challenge_shop = e.currentTarget.checked;
+                            update();
+                        }}
+                    />
+                </div>
 
-        <!-- Golemore Mine -->
-        <div class="input-chip">
-            <label for="golemore_mine">
-                {getTranslation(lang, "golemore_mine")}
-            </label>
-            <input
-                type="checkbox"
-                id="golemore_mine"
-                bind:checked={values.golemore_mine}
-                on:change={(e) => {
-                    values.golemore_mine = e.currentTarget.checked;
-                    update();
-                }}
-            />
-        </div>
+                <!-- Golemore Mine -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <div class="store-chip" on:click={toggleChildCheckbox}>
+                    {getTranslation(lang, "golemore_mine")}
+                    <input
+                        type="checkbox"
+                        id="golemore_mine"
+                        bind:checked={values.golemore_mine}
+                        on:click={stopMouseEvents}
+                        on:change={(e) => {
+                            values.golemore_mine = e.currentTarget.checked;
+                            update();
+                        }}
+                    />
+                </div>
 
-        <!-- Guild -->
-        <div class="input-chip">
-            <label for="guild">
-                {getTranslation(lang, "guild")}
-            </label>
-            <input
-                type="checkbox"
-                id="guild"
-                bind:checked={values.guild}
-                on:change={(e) => {
-                    values.guild = e.currentTarget.checked;
-                    update();
-                }}
-            />
-        </div>
+                <!-- Guild -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <div class="store-chip" on:click={toggleChildCheckbox}>
+                    {getTranslation(lang, "guild")}
+                    <input
+                        type="checkbox"
+                        id="guild"
+                        bind:checked={values.guild}
+                        on:click={stopMouseEvents}
+                        on:change={(e) => {
+                            values.guild = e.currentTarget.checked;
+                            update();
+                        }}
+                    />
+                </div>
 
-        <!-- Banquet -->
-        <div class="input-chip">
-            <label for="banquet">
-                {getTranslation(lang, "banquet")}
-            </label>
-            <input
-                type="checkbox"
-                id="banquet"
-                bind:checked={values.banquet}
-                on:change={(e) => {
-                    values.banquet = e.currentTarget.checked;
-                    update();
-                }}
-            />
+                <!-- Banquet -->
+                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                <div class="store-chip" on:click={toggleChildCheckbox}>
+                    {getTranslation(lang, "banquet")}
+                    <input
+                        type="checkbox"
+                        id="banquet"
+                        bind:checked={values.banquet}
+                        on:click={stopMouseEvents}
+                        on:change={(e) => {
+                            values.banquet = e.currentTarget.checked;
+                            update();
+                        }}
+                    />
+                </div>
+            </div>
+
+            <p>{getTranslation(lang, "app.information")}</p>
+            <p>{values.expected_ores_per_day}</p>
         </div>
-    </div>
+    </OutlinedCard>
 </main>
+<Footer />
 
 <style>
     main {
+        width: auto;
+        height: auto;
+        min-height: 100vh;
+
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -337,21 +368,20 @@
         margin: 0;
     }
 
-    .information-group {
-        margin-bottom: 16px;
+    /* Stores */
 
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
+    .card-stores-container {
+        padding: 16px;
     }
-    .information-group p {
+    .card-stores-container p {
         margin: 0;
+        text-align: center;
     }
 
-    .options-group {
+    .stores-group {
         width: auto;
         min-width: 80%;
+        margin-bottom: 16px;
 
         display: flex;
         flex-direction: row;
@@ -359,11 +389,13 @@
         justify-content: space-evenly;
     }
 
-    .input-chip {
+    .store-chip {
+        z-index: 1;
         height: 32px;
         padding: 0 16px;
 
         border-radius: 8px;
+        border: 1px solid var(--md-sys-color-outline-variant);
 
         display: flex;
         align-items: center;

@@ -1,78 +1,29 @@
 import { Rarity } from './rarity'
+import { Item } from './item'
 
 
 export const REFINED_TO_ORE: number = 20 * 50
 export const CRYSTAL_TO_ORE: number = 20
 
+const color_red = 'rgb(233, 30, 99)'
+const color_blue = 'rgb(3, 169, 244)'
+const color_yellow = 'rgb(255, 235, 59)'
 
-export enum Crystal {
-    CRYSTAL_ORE_RED = 'crystal_ore.red',
-    CRYSTAL_ORE_BLUE = 'crystal_ore.blue',
-    CRYSTAL_ORE_YELLOW = 'crystal_ore.yellow',
+const image_red = '/static/images/vermelho-removebg-preview.png'
+const image_blue = '/static/images/azul-removebg-preview.png'
+const image_yellow = '/static/images/amarelo-removebg-preview.png'
 
-    CRYSTAL_RED = 'crystal.red',
-    CRYSTAL_BLUE = 'crystal.blue',
-    CRYSTAL_YELLOW = 'crystal.yellow',
 
-    REFINED_CRYSTAL_RED = 'refined_crystal.red',
-    REFINED_CRYSTAL_BLUE = 'refined_crystal.blue',
-    REFINED_CRYSTAL_YELLOW = 'refined_crystal.yellow',
+export const Crystals = {
+    CRYSTAL_ORE_RED: new Item('crystal_ore.red', Rarity.SR, image_red, color_red),
+    CRYSTAL_ORE_BLUE: new Item('crystal_ore.blue', Rarity.SR, image_blue, color_blue),
+    CRYSTAL_ORE_YELLOW: new Item('crystal_ore.yellow', Rarity.SR, image_yellow, color_yellow),
+
+    CRYSTAL_RED: new Item('crystal.red', Rarity.SSR, image_red, color_red),
+    CRYSTAL_BLUE: new Item('crystal.blue', Rarity.SSR, image_blue, color_blue),
+    CRYSTAL_YELLOW: new Item('crystal.yellow', Rarity.SSR, image_yellow, color_yellow),
+
+    REFINED_CRYSTAL_RED: new Item('refined_crystal.red', Rarity.UR, image_red, color_red),
+    REFINED_CRYSTAL_BLUE: new Item('refined_crystal.blue', Rarity.UR, image_blue, color_blue),
+    REFINED_CRYSTAL_YELLOW: new Item('refined_crystal.yellow', Rarity.UR, image_yellow, color_yellow),
 }
-
-export function getCrystalColor(crystal: Crystal): string {
-    switch (crystal) {
-        case Crystal.CRYSTAL_ORE_RED:
-        case Crystal.CRYSTAL_RED:
-        case Crystal.REFINED_CRYSTAL_RED:
-            return 'rgb(233, 30, 99)' // Pink 500
-        case Crystal.CRYSTAL_ORE_BLUE:
-        case Crystal.CRYSTAL_BLUE:
-        case Crystal.REFINED_CRYSTAL_BLUE:
-            return 'rgb(3, 169, 244)' // Light blue 500
-        case Crystal.CRYSTAL_ORE_YELLOW:
-        case Crystal.CRYSTAL_YELLOW:
-        case Crystal.REFINED_CRYSTAL_YELLOW:
-            return 'rgb(255, 235, 59)' // Yellow 500
-        default:
-            return 'rgb(255, 255, 255)' // White
-    }
-}
-
-export function getCrystalRarity(crystal: Crystal): Rarity {
-    switch (crystal) {
-        case Crystal.CRYSTAL_ORE_RED:
-        case Crystal.CRYSTAL_ORE_BLUE:
-        case Crystal.CRYSTAL_ORE_YELLOW:
-            return Rarity.SR
-        case Crystal.CRYSTAL_RED:
-        case Crystal.CRYSTAL_BLUE:
-        case Crystal.CRYSTAL_YELLOW:
-            return Rarity.SSR
-        case Crystal.REFINED_CRYSTAL_RED:
-        case Crystal.REFINED_CRYSTAL_BLUE:
-        case Crystal.REFINED_CRYSTAL_YELLOW:
-            return Rarity.UR
-    }
-}
-
-export function getCrystalImageURL(crystal: Crystal): string {
-    switch (crystal) {
-        case Crystal.CRYSTAL_ORE_RED:
-        case Crystal.CRYSTAL_RED:
-        case Crystal.REFINED_CRYSTAL_RED:
-            return '/static/images/vermelho-removebg-preview.png'
-        case Crystal.CRYSTAL_ORE_BLUE:
-        case Crystal.CRYSTAL_BLUE:
-        case Crystal.REFINED_CRYSTAL_BLUE:
-            return '/static/images/azul-removebg-preview.png'
-        case Crystal.CRYSTAL_ORE_YELLOW:
-        case Crystal.CRYSTAL_YELLOW:
-        case Crystal.REFINED_CRYSTAL_YELLOW:
-            return '/static/images/amarelo-removebg-preview.png'
-        default:
-            return ''
-    }
-}
-
-
-

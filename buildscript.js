@@ -1,26 +1,94 @@
 // https://github.com/EMH333/esbuild-svelte/blob/ff4c069a541752f9f33203f011035fd44591455c/example-ts/buildscript.js#L1
 
-import fs from "fs"
-import esbuild from "esbuild"
-import esbuildSvelte from "esbuild-svelte"
-import sveltePreprocess from "svelte-preprocess"
+import fs, { stat } from 'fs'
+import fse from 'fs-extra'
+import path from 'path'
+import crypto from 'crypto'
+import esbuild from 'esbuild'
+import esbuildSvelte from 'esbuild-svelte'
+import sveltePreprocess from 'svelte-preprocess'
 
 
 // Arquivos de entrada e saída
 const FILES = {
     Output: {
         dir: './docs',
-        html: './docs/index.html'
+        html: './docs/index.html',
+        static: './docs/static'
     },
     Source: {
         script: './src/index.ts',
-        html: './src/index.html'
+        html: './src/index.html',
+        staic: './static',
     }
 }
 
 
-// Funções para gerar os arquivos
-function build() {
+
+/**
+ * Função para calcular o SHA1 de um arquivo
+ * 
+ * @param {string} filePath 
+ * @returns {Promise<string>}
+ */
+function calculateSHA1(filePath) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash("sha1")
+        const stream = fse.createReadStream(filePath)
+
+        stream.on("data", (chunk) => hash.update(chunk))
+        stream.on("end", () => resolve(hash.digest("hex")))
+        stream.on("error", (err) => reject(err))
+    })
+}
+
+/**
+ * Função principal para copiar os arquivos estaticos
+ * 
+ * @param {string} sourceDir 
+ * @param {string} targetDir 
+ */
+async function copyIfDifferent(sourceDir, targetDir) {
+    const files = await fse.readdir(sourceDir, { withFileTypes: true })
+
+    for (const file of files) {
+        const sourcePath = path.join(sourceDir, file.name)
+        const targetPath = path.join(targetDir, file.name)
+
+        if (file.isDirectory()) {
+            // Criar a pasta no destino e chamar recursivamente
+            await fse.ensureDir(targetPath)
+            await copyIfDifferent(sourcePath, targetPath)
+        } else {
+            // Verificar se o arquivo de destino existe
+            if (await fse.pathExists(targetPath)) {
+                const [sourceHash, targetHash] = await Promise.all([
+                    calculateSHA1(sourcePath),
+                    calculateSHA1(targetPath),
+                ])
+
+                if (sourceHash !== targetHash) {
+                    // Copiar arquivo se os hashes forem diferentes
+                    await fse.copy(sourcePath, targetPath)
+
+                    console.log(`Arquivo atualizado: ${file.name}`)
+                }
+            } else {
+                // Copiar arquivo se não existir no destino
+                await fse.copy(sourcePath, targetPath)
+
+                console.log(`Arquivo copiado: ${file.name}`)
+            }
+        }
+    }
+}
+
+
+
+/**
+ * Função para construir o Svelte
+ */
+function build_svelte() {
     esbuild.build({
         entryPoints: [FILES.Source.script],
         bundle: true,
@@ -44,6 +112,9 @@ function build() {
     })
 }
 
+/**
+ * Função para construir o HTML
+ */
 function build_html() {
     function create_node_css(file) {
         return `<link rel="stylesheet" type="text/css" href="${file}" />`
@@ -84,12 +155,19 @@ function build_html() {
 }
 
 
-// Verificar se o diretório existe
-if (!fs.existsSync(FILES.Output.dir)) {
-    console.log('Creating folder...')
-    fs.mkdirSync(FILES.Output.dir)
+async function main() {
+    // Verificar se o diretório existe
+    if (!fs.existsSync(FILES.Output.dir)) {
+        console.log('Criando diretório de saída...')
+        fs.mkdirSync(FILES.Output.dir)
+    }
+
+
+    build_svelte()
+    build_html()
+
+    await copyIfDifferent(FILES.Source.staic, FILES.Output.static)
+
+    console.log('Build finalizado!')
 }
-
-
-build()
-build_html()
+main()
