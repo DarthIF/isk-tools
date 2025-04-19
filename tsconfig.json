@@ -18,10 +18,12 @@
     },
     "include": [
         "src/main.ts",
+        "src/scripts/**.ts",
         "src/**/*.svelte"
     ],
     "exclude": [
         "node_modules/**",
-        "extension/**"
+        "extension/**",
+        "docs/**",
     ]
 }

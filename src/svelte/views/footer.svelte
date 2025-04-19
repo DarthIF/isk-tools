@@ -1,18 +1,20 @@
 <script lang="ts">
+    import { APP_DESCIPTION, APP_NAME, xref } from "../../scripts/isk";
+
+    function getGithubImageSrc() {
+        return xref("static/images/github-mark/github-mark-white.svg");
+    }
 </script>
 
 <footer class="dark">
     <div class="content">
         <div>
-            <h2>ISK Calculator</h2>
-            <p>Crystal calculator for the game Isekai:Slow Life</p>
+            <h2>{APP_NAME}</h2>
+            <p>{APP_DESCIPTION}</p>
         </div>
         <div>
             <a href="https://github.com/DarthIF/isk-calculator">
-                <img
-                    src="static/images/github-mark/github-mark-white.svg"
-                    alt="GitHub"
-                />
+                <img src={getGithubImageSrc()} alt="GitHub" />
             </a>
         </div>
     </div>
@@ -23,8 +25,9 @@
 </footer>
 
 <style>
+    @import "../css/a.css";
+
     footer {
-        margin-top: 24px;
         padding: 24px 0;
 
         color: var(--md-sys-color-on-surface);
@@ -38,14 +41,6 @@
     p {
         margin: 0;
         text-align: center;
-    }
-
-    a {
-        color: var(--md-sys-color-primary);
-        text-decoration: none;
-    }
-    a:hover {
-        text-decoration: underline;
     }
 
     img {

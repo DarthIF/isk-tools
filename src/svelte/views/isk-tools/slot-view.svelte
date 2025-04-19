@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { Item } from "../../scripts/utils/item";
     import { onMount } from "svelte";
+    import { xref } from "../../../scripts/isk";
+    import { Item } from "../../../scripts/isk/item";
 
     function update() {
         if (!el_slot) return;
@@ -25,7 +26,10 @@
     }
 
     function getImage(item: Item | null): string {
-        return item ? item.getImage() : "";
+        if (!item) return "";
+
+        // Retornar o uri da imagem corrigido pelo xref
+        return xref(item.getImage());
     }
 
     onMount(() => {

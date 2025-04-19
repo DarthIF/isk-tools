@@ -1,7 +1,6 @@
 <script lang="ts">
-    import type { Item } from "../../scripts/utils/item";
+    import type { Item } from "../../../scripts/isk/item";
     import SlotView from "./slot-view.svelte";
-    import { Crystals } from "../../scripts/utils/crystal";
 
     export let crystal: Item | null;
     export let count = 0;
