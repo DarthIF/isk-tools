@@ -3,8 +3,11 @@
     import CommonLayout from "../layout/common-layout.svelte";
     import FilledButton from "../views/material/filled-button.svelte";
     import { xref } from "../../scripts/isk";
+    import GameTextBox from "../views/isk-tools/game-text-box.svelte";
+    import { IframeUtil } from "../../scripts/utils/iframe-util";
+    import { TextMode } from "src/scripts/isk/text-mode";
 
-    function getEditorContent() {
+    function getEditorBbCode() {
         const textarea = document.getElementById("editor-text-area");
         // @ts-ignore
         const instance = window.sceditor.instance(textarea);
@@ -12,9 +15,20 @@
         return instance.val();
     }
 
+    function getEditorHTML() {
+        const body = IframeUtil.querySelector(".editor-root iframe", "body");
+        return body ? body.innerHTML : "";
+    }
+
+    function updateConvertedUI() {
+        const bbcode = getEditorBbCode();
+        const html = getEditorHTML();
+
+        el_game_text_box.setText(bbcode, html);
+    }
+
     function handleConvert(event: MouseEvent) {
-        const bbcode = getEditorContent();
-        el_output.textContent = bbcode;
+        updateConvertedUI();
     }
 
     function load_stylesheet() {
@@ -64,6 +78,8 @@
             },
             resizeEnabled: false,
         });
+
+        updateConvertedUI();
     }
 
     onMount(() => {
@@ -72,7 +88,7 @@
     });
 
     let el_editor: HTMLDivElement;
-    let el_output: HTMLDivElement;
+    let el_game_text_box: GameTextBox;
 </script>
 
 <CommonLayout>
@@ -87,7 +103,11 @@
             style="margin-top: 12px;"
         />
 
-        <div bind:this={el_output} class="bbcode"></div>
+        <hr
+            style="width: 360px; border: var(--md-sys-color-outline) 1px solid;"
+        />
+
+        <GameTextBox bind:this={el_game_text_box} mode={TextMode.CHAT} />
     </div>
 </CommonLayout>
 
@@ -101,6 +121,8 @@
     }
 
     .main {
+        margin-bottom: 32px;
+
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -109,24 +131,5 @@
     .editor-root {
         width: 320px;
         height: 220px;
-    }
-    .bbcode {
-        width: 320px;
-        height: auto;
-        min-height: 24px;
-        margin-top: 12px;
-        padding-left: 12px;
-        padding-right: 12px;
-
-        border-color: var(--md-sys-color-outline);
-        border-style: solid;
-        border-width: 1px;
-        border-radius: 12px;
-
-        background-color: var(--md-sys-color-surface);
-        color: var(--md-sys-color-on-surface);
-
-        user-select: all;
-        word-wrap: anywhere;
     }
 </style>
